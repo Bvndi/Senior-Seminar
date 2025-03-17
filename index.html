@@ -23,46 +23,45 @@
   </div>
 
   <script>
-    const apiKey = 'YOUR_YELP_API_KEY'; // Replace with your Yelp API key
+    const searchButton = document.getElementById('searchButton');
+    const searchInput = document.getElementById('searchInput');
     const resultsDiv = document.getElementById('results');
 
-    document.getElementById('searchForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const location = document.getElementById('location').value;
-      const term = document.getElementById('term').value;
+    searchButton.addEventListener('click', async () => {
+      const query = searchInput.value;
+      if (query) {
+        try {
+          // Call your API
+          const response = await fetch(`http://localhost:3000/business-info?query=${encodeURIComponent(query)}`);
+          const data = await response.json();
 
-      try {
-        const response = await fetch(`https://cors-anywhere.herokuapp.com/https://api.yelp.com/v3/businesses/search?location=${location}&term=${term}`, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-          },
-        });
-        const data = await response.json();
-        displayResults(data.businesses);
-      } catch (error) {
-        console.error('Error fetching data:', error);
+          // Display results
+          displayResults(data);
+        } catch (error) {
+          console.error('Error fetching data:', error);
+          resultsDiv.innerHTML = '<p>Failed to fetch results. Please try again.</p>';
+        }
+      } else {
+        alert('Please enter a business name or type.');
       }
     });
 
-    function displayResults(businesses) {
-      resultsDiv.innerHTML = ''; // Clear previous results
-      if (businesses.length === 0) {
-        resultsDiv.innerHTML = '<p>No businesses found.</p>';
+    function displayResults(data) {
+      if (data.error) {
+        resultsDiv.innerHTML = `<p>${data.error}</p>`;
         return;
       }
 
-      businesses.forEach(business => {
-        const businessDiv = document.createElement('div');
-        businessDiv.className = 'business';
-        businessDiv.innerHTML = `
-          <h2>${business.name}</h2>
-          <p>Rating: ${business.rating} ⭐</p>
-          <p>Address: ${business.location.address1}</p>
-          <p>Phone: ${business.phone}</p>
-          <a href="${business.url}" target="_blank">View on Yelp</a>
-        `;
-        resultsDiv.appendChild(businessDiv);
-      });
+      resultsDiv.innerHTML = `
+        <div class="business-card">
+          <h2>${data.name}</h2>
+          <p><strong>Address:</strong> ${data.location.address}</p>
+          <p><strong>Online Presence:</strong></p>
+          <ul>
+            ${data.onlinePresence.map(link => `<li><a href="${link}" target="_blank">${link}</a></li>`).join('')}
+          </ul>
+        </div>
+      `;
     }
   </script>
 </body>
