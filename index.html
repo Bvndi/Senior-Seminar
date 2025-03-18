@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Local Business Finder</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Add FontAwesome for social media icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Add Leaflet for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <div class="main">
@@ -31,6 +36,9 @@
       const query = searchInput.value;
       if (query) {
         try {
+          // Clear previous results
+          resultsDiv.innerHTML = '<p>Loading...</p>';
+          
           // Call your API
           const response = await fetch(`http://localhost:3000/business-info?query=${encodeURIComponent(query)}`);
           const data = await response.json();
@@ -52,16 +60,67 @@
         return;
       }
 
-      resultsDiv.innerHTML = `
-        <div class="business-card">
-          <h2>${data.name}</h2>
-          <p><strong>Address:</strong> ${data.location.address}</p>
-          <p><strong>Online Presence:</strong></p>
-          <ul>
-            ${data.onlinePresence.map(link => `<li><a href="${link}" target="_blank">${link}</a></li>`).join('')}
-          </ul>
-        </div>
-      `;
+      // Clear previous results
+      resultsDiv.innerHTML = '';
+
+      //Create a business card
+      const businessCard = document.createElement('div');
+      businessCard.className = 'business-card';
+
+      //Add business name
+      const businessName = document.createElement('h2');
+      businessName.textContent = data.name;
+      businessName.appendChild(businessName);
+
+      //Add address
+      const address = document.createElement('p');
+      address.innerHTML = '<strong>Address:</strong> ${data.location.address}';
+      businessCard.appendChild(address);
+
+      // Add map
+      const mapContainer = document.createElement('div');
+      mapContainer.id = 'map';
+      mapContainer.style.height = '200px';
+      mapContainer.style.marginBottom = '20px';
+      businessCard.appendChild(mapContainer);
+
+      // Initialize the map
+      const map = L.map('map').setView([data.location.latitude, data.location.longitude], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      L.marker([data.location.latitude, data.location.longitude]).addTo(map);
+
+      // Add online presence
+      const onlinePresence = document.createElement('p');
+      onlinePresence.innerHTML = `<strong>Online Presence:</strong>`;
+      businessCard.appendChild(onlinePresence);
+
+      const linksList = document.createElement('ul');
+      data.onlinePresence.forEach(link => {
+        const listItem = document.createElement('li');
+        const anchor = document.createElement('a');
+        anchor.href = link;
+        anchor.target = '_blank';
+
+        // Add social media icons
+        if (link.includes('facebook.com')) {
+          anchor.innerHTML = '<i class="fab fa-facebook"></i> Facebook';
+        } else if (link.includes('instagram.com')) {
+          anchor.innerHTML = '<i class="fab fa-instagram"></i> Instagram';
+        } else if (link.includes('linkedin.com')) {
+          anchor.innerHTML = '<i class="fab fa-linkedin"></i> LinkedIn';
+        } else {
+          anchor.textContent = link;
+        }
+
+        listItem.appendChild(anchor);
+        linksList.appendChild(listItem);
+      });
+      businessCard.appendChild(linksList);
+
+      // Append the business card to the results div
+      resultsDiv.appendChild(businessCard);
     }
   </script>
 </body>

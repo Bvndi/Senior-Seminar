@@ -1,5 +1,5 @@
 {
-  "name": "business-api",
+  "name": "my-json-api",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -8,10 +8,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "axios": "^1.8.3",
-    "cheerio": "^1.0.0",
-    "express": "^4.21.2"
-  },
   "description": ""
 }

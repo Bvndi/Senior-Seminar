@@ -2,7 +2,7 @@
   margin: 0;
   padding: 0;
 }
-.body {
+  .body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
@@ -20,11 +20,27 @@
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     width: 100%;
     max-width: 600px;
+    text-align: center;
   }
   
   h1 {
-    text-align: center;
-    color: #333;
+    font-size: 24px;
+  margin-bottom: 20px;
+  color: #333;
+  }
+
+  .search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    flex: 1;
   }
   
   form {
@@ -56,30 +72,46 @@
   
   #results {
     margin-top: 20px;
+    text-align: left;
   }
   
-  .business {
+  .business-card {
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 4px;
-    margin-bottom: 10px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   }
   
-  .business h2 {
-    margin: 0;
+  .business-card h2 {
+    margin: 0 0 10px;
+    font-size: 20px;
     color: #007bff;
   }
   
-  .business p {
+  .business-card p {
+    margin: 5px 0;
+    color: #555;
+  }
+  
+  .business-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .business-card ul li {
     margin: 5px 0;
   }
   
-  .business a {
+  .business-card ul li a {
     color: #007bff;
     text-decoration: none;
   }
   
-  .business a:hover {
+  .business-card ul li a:hover {
     text-decoration: underline;
-    }
+  }
+  
+  .business-card ul li i {
+    margin-right: 5px;
+  }
+  
