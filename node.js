@@ -1,82 +1,128 @@
-const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
+// Initialize the map
+const map = L.map('map').setView([40.7128, -74.0060], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
 
-const app = express();
-const PORT = 3000;
+// Yelp API Configuration
+const YELP_API_KEY = 'toY0q6whX7_wBO9zdfdkymlgnWCHolOjsUjVtmRnAFcJhwDUC5IMuwwfxFsL8f_onGwrrcg7BMjrZUTLUClp_HmZhGTkKaX-fnezPnMy1OHnKpAhAVUAScIRHYvhZ3Yx';
 
-// Geocoding function using Nominatim
-async function geocodeBusiness(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-  const response = await axios.get(url);
-  if (response.data.length > 0) {
-    return response.data[0]; // Return the first result
-  }
-  return null;
-}
+// DOM Elements
+const searchBtn = document.getElementById('search-btn');
+const businessTypeInput = document.getElementById('business-type');
+const locationInput = document.getElementById('location');
+const radiusSelect = document.getElementById('radius');
+const sortBySelect = document.getElementById('sort-by');
+const resultsDiv = document.getElementById('results');
 
-// Function to check for online presence
-async function checkOnlinePresence(businessName) {
-  try {
-    // Search for the business on Google (or another search engine)
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(businessName)}`;
-    const response = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-      },
-    });
+// Search for businesses
+searchBtn.addEventListener('click', searchBusinesses);
 
-    const $ = cheerio.load(response.data);
-    const links = [];
-    $('a').each((i, elem) => {
-      const href = $(elem).attr('href');
-      if (href && href.startsWith('/url?q=')) {
-        const cleanUrl = href.replace('/url?q=', '').split('&')[0];
-        links.push(cleanUrl);
-      }
-    });
+async function searchBusinesses() {
+    const term = businessTypeInput.value.trim();
+    const location = locationInput.value.trim();
+    const radius = radiusSelect.value;
+    const sortBy = sortBySelect.value;
 
-    return links.slice(0, 5); // Return top 5 links
-  } catch (error) {
-    console.error('Error checking online presence:', error);
-    return [];
-  }
-}
-
-// API endpoint
-app.get('/business-info', async (req, res) => {
-  const { query } = req.query;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter is required' });
-  }
-
-  try {
-    // Step 1: Geocode the business
-    const locationData = await geocodeBusiness(query);
-    if (!locationData) {
-      return res.status(404).json({ error: 'Business not found' });
+    if (!term || !location) {
+        showError('Please enter both a business type and location');
+        return;
     }
 
-    // Step 2: Check for online presence
-    const onlineLinks = await checkOnlinePresence(query);
+    // Show loading state
+    resultsDiv.innerHTML = '<div class="loading">Searching for businesses...</div>';
 
-    // Step 3: Return combined results
-    res.json({
-      name: query,
-      location: {
-        address: locationData.display_name,
-        latitude: locationData.lat,
-        longitude: locationData.lon,
-      },
-      onlinePresence: onlineLinks,
+    try {
+        // Using CORS proxy to avoid direct frontend issues
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const yelpUrl = `https://api.yelp.com/v3/businesses/search?term=${term}&location=${location}&radius=${radius}&sort_by=${sortBy}`;
+        
+        const response = await fetch(proxyUrl + yelpUrl, {
+            headers: {
+                'Authorization': `Bearer ${YELP_API_KEY}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.description || 'Failed to fetch data');
+        }
+
+        const data = await response.json();
+        
+        if (data.error) {
+            showError(data.error.description);
+        } else {
+            displayResults(data.businesses || []);
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        showError(error.message);
+    }
+}
+
+function showError(message) {
+    resultsDiv.innerHTML = `<div class="error">Error: ${message}</div>`;
+}
+
+function displayResults(businesses) {
+    // Clear previous results
+    resultsDiv.innerHTML = '';
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            map.removeLayer(layer);
+        }
     });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+    if (!businesses || businesses.length === 0) {
+        resultsDiv.innerHTML = '<p>No businesses found. Try a different search.</p>';
+        return;
+    }
+
+    // Center map on first result
+    if (businesses[0].coordinates) {
+        map.setView([businesses[0].coordinates.latitude, businesses[0].coordinates.longitude], 13);
+    }
+
+    // Process each business
+    businesses.forEach(business => {
+        // Create business card
+        const card = document.createElement('div');
+        card.className = 'business-card';
+        
+        // Determine online presence strength
+        const hasWebsite = business.url ? 1 : 0;
+        const hasPhone = business.phone ? 1 : 0;
+        const hasSocial = (business.facebook_url || business.instagram_url) ? 1 : 0;
+        const onlinePresenceScore = hasWebsite + hasPhone + hasSocial;
+        
+        // Only show businesses with limited online presence (score <= 1)
+        if (onlinePresenceScore <= 1) {
+            card.innerHTML = `
+                <h3>${business.name}</h3>
+                <div class="rating">${business.rating || 'No'} ★ (${business.review_count || 0} reviews)</div>
+                <div class="categories">${business.categories?.map(cat => cat.title).join(', ') || 'Uncategorized'}</div>
+                <div class="address">${business.location?.display_address?.join(', ') || 'Address not available'}</div>
+                ${business.phone ? `<div class="phone">📞 ${business.phone}</div>` : ''}
+                <div class="online-presence">
+                    ${business.url ? `<a href="${business.url}" target="_blank">Website</a>` : '<span class="no-presence">No website</span>'}
+                    ${business.phone ? `<a href="tel:${business.phone}">Call</a>` : ''}
+                </div>
+                <div class="presence-score">Online Presence: ${onlinePresenceScore}/3 (low)</div>
+            `;
+            resultsDiv.appendChild(card);
+
+            // Add marker to map if coordinates exist
+            if (business.coordinates) {
+                const marker = L.marker([business.coordinates.latitude, business.coordinates.longitude])
+                    .addTo(map)
+                    .bindPopup(`<b>${business.name}</b><br>${business.location?.display_address?.[0] || ''}`);
+            }
+        }
+    });
+
+    if (resultsDiv.children.length === 0) {
+        resultsDiv.innerHTML = '<p>All businesses in this area have good online presence. Try a different location.</p>';
+    }
+}
