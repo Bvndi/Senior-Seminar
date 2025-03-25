@@ -1,0 +1,15 @@
+{
+    "name": "local-business-finder",
+    "version": "1.0.0",
+    "description": "Find local businesses with limited online presence",
+    "main": "server.js",
+    "scripts": {
+    "start": "node server.js"
+    },
+    "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+    }
+    }

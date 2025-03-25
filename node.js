@@ -37,12 +37,7 @@ async function searchBusinesses() {
         const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
         const yelpUrl = `https://api.yelp.com/v3/businesses/search?term=${term}&location=${location}&radius=${radius}&sort_by=${sortBy}`;
         
-        const response = await fetch(proxyUrl + yelpUrl, {
-            headers: {
-                'Authorization': `Bearer ${YELP_API_KEY}`,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
+        const response = await fetch(`http://localhost:3000/api/yelp?term=${term}&location=${location}&radius=${radius}&sort_by=${sortBy}`);
 
         if (!response.ok) {
             const errorData = await response.json();
