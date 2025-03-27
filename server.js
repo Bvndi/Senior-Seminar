@@ -1,16 +1,33 @@
+require('dotenv').config();
+
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+
 const app = express();
-const PORT = 3000;
+const port = process.env.PORT || 3000;
 
-// Yelp API Key (keep it secret here)
-const YELP_API_KEY = 'YOUR_YELP_API_KEY';
+// Use environment variables
+const YELP_API_KEY = process.env.YELP_API_KEY;
 
-app.use(cors());
+// CORS Configuration (restrict to trusted domains in production)
+const corsOptions = {
+    origin: ['http://localhost:3000', 'https://your-production-domain.com'],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Yelp API Proxy
+// Rate Limiting (apply before the routes)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 100                   // limit each IP to 100 requests per window
+});
+app.use(limiter);
+
+// Yelp API Proxy Route
 app.get('/api/yelp', async (req, res) => {
     const { term, location } = req.query;
 
@@ -27,18 +44,21 @@ app.get('/api/yelp', async (req, res) => {
         });
 
         res.json(response.data);
+
     } catch (error) {
-        console.error('Yelp API Error:', error);
-        res.status(500).json({ error: 'Failed to fetch Yelp data' });
+        // Improved error handling
+        if (error.response) {
+            console.error('Yelp API Error:', error.response.data);
+            res.status(error.response.status).json({ error: error.response.data });
+        } else if (error.request) {
+            console.error('No response received:', error.request);
+            res.status(500).json({ error: 'No response received from Yelp' });
+        } else {
+            console.error('Request failed:', error.message);
+            res.status(500).json({ error: 'An unexpected error occurred' });
+        }
     }
 });
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-
-const rateLimit = require('express-rate-limit');
-
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per window
-});
-app.use(limiter);
+// Start server
+app.listen(port, () => console.log(`Server running on port ${port}`));
