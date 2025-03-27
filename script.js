@@ -25,7 +25,8 @@ if (!localStorage.getItem('tutorialShown')) {
 }
 
 // Event Listeners
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', function() {
+    console.log('Start button clicked');
     tutorialModal.style.display = 'none';
 });
 

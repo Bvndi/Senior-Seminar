@@ -457,3 +457,7 @@ header h1 {
     max-width: 200px;
     margin-bottom: 20px;
 }
+
+#start-btn{
+    pointer-events: auto !important;
+}
