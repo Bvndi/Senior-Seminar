@@ -1,5 +1,5 @@
 // Yelp API Configuration
-const apikey = process.env.YELP_API_KEY;
+const apikey = process.env.YELP_API_KEY; 
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 // DOM Elements
