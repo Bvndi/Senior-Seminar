@@ -44,33 +44,48 @@ async function searchBusinesses() {
     const term = businessTypeInput.value.trim();
     const location = locationInput.value.trim();
 
+    console.log("Searching for:", { term, location }); // Debug log
+
     if (!term || !location) {
         showError('Please enter both a business type and location');
         return;
     }
 
-    // Show loading state
+    // Validate location format
+    if (!/^[a-zA-Z\s]+$/.test(location) && !/^\d+$/.test(location)) {
+        showError('Please use either a city name or ZIP code');
+        return;
+    }
+
     setLoading(true);
     clearResults();
 
     try {
-        const response = await fetch(`${CORS_PROXY}https://api.yelp.com/v3/businesses/search?term=${term}&location=${location}&limit=20`, {
-            headers: {
-                'Authorization': `Bearer ${YELP_API_KEY}`,
-                'X-Requested-With': 'XMLHttpRequest'
+        // Test with hardcoded values first
+        const testTerm = "bakery";
+        const testLocation = "san francisco";
+        
+        const response = await fetch(
+            `${CORS_PROXY}https://api.yelp.com/v3/businesses/search?term=${encodeURIComponent(testTerm)}&location=${encodeURIComponent(testLocation)}`, 
+            {
+                headers: {
+                    'Authorization': `Bearer ${YELP_API_KEY}`,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             }
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.description || 'Failed to fetch data from Yelp');
-        }
+        );
 
         const data = await response.json();
-        displayResults(data.businesses || []);
+        console.log("API Response:", data); // Debug log
+        
+        if (data.error) {
+            showError(data.error.description);
+        } else {
+            displayResults(data.businesses || []);
+        }
     } catch (error) {
-        console.error('Search error:', error);
-        showError(error.message);
+        console.error('API Error:', error);
+        showError('Failed to connect to Yelp. Please try again later.');
     } finally {
         setLoading(false);
     }
