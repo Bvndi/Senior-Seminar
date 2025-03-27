@@ -1,48 +1,61 @@
 require('dotenv').config();
-
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { body, validationResult } = require('express-validator');
+const { query, validationResult } = require('express-validator');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Validate required environment variables
-if (!process.env.YELP_API_KEY) {
-    console.error('FATAL ERROR: YELP_API_KEY is not defined.');
-    process.exit(1);
-}
+const requiredEnvVars = ['YELP_API_KEY'];
+requiredEnvVars.forEach(varName => {
+    if (!process.env[varName]) {
+        console.error(`FATAL ERROR: ${varName} is not defined.`);
+        process.exit(1);
+    }
+});
 
 // Security Middleware
-app.use(helmet()); // Adds various security headers
-app.disable('x-powered-by'); // Remove Express header
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:', 'https://*.yelp.com']
+        }
+    },
+    hsts: isProduction
+}));
+app.disable('x-powered-by');
 
 // CORS Configuration
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
+    origin: isProduction 
         ? ['https://your-production-domain.com'] 
         : ['http://localhost:3000'],
     methods: ['GET'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type'],
+    credentials: true
 };
 app.use(cors(corsOptions));
 
 // Request logging
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 // Rate Limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per window
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isProduction ? 50 : 100,
     message: 'Too many requests from this IP, please try again later',
     standardHeaders: true,
     legacyHeaders: false
 });
-app.use('/api/yelp', limiter);
 
 // Body parsing middleware
 app.use(express.json());
@@ -50,32 +63,41 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
+    res.status(200).json({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Yelp API Proxy Route with input validation
-app.get('/api/yelp', [
-    // Input validation
-    body('term').trim().notEmpty().withMessage('Business type is required'),
-    body('location').trim().notEmpty().withMessage('Location is required')
+app.get('/api/yelp', apiLimiter, [
+    // Input validation for query parameters
+    query('term')
+        .trim()
+        .notEmpty().withMessage('Business type is required')
+        .isLength({ max: 50 }).withMessage('Business type must be less than 50 characters'),
+    query('location')
+        .trim()
+        .notEmpty().withMessage('Location is required')
+        .isLength({ max: 100 }).withMessage('Location must be less than 100 characters')
 ], async (req, res) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ 
+            success: false,
+            errors: errors.array() 
+        });
     }
 
     const { term, location } = req.query;
 
     try {
-        // Validate parameters
-        if (term || location) {
-            return res.status(400).json({ 
-                error: 'Both "term" and "location" query parameters are required.' });
-        }
-
         // Cache control headers
-        res.set('Cache-Control', 'public, max-age=300'); // 5 minute cache
+        res.set({
+            'Cache-Control': 'public, max-age=300',
+            'X-Content-Type-Options': 'nosniff'
+        });
 
         const response = await axios.get('https://api.yelp.com/v3/businesses/search', {
             headers: {
@@ -83,11 +105,11 @@ app.get('/api/yelp', [
                 'Accept': 'application/json'
             },
             params: { 
-                term: term.substring(0, 50), // Limit length
+                term: term.substring(0, 50),
                 location: location.substring(0, 100),
-                limit: 20 // Limit results to prevent excessive data transfer
+                limit: 20
             },
-            timeout: 5000 // 5 second timeout
+            timeout: 5000
         });
 
         // Filter and format response data
@@ -101,14 +123,14 @@ app.get('/api/yelp', [
             categories: business.categories,
             coordinates: business.coordinates,
             location: business.location,
-            // Add additional fields as needed
             presence_score: calculatePresenceScore(business)
         }));
 
         res.json({
             success: true,
             count: businesses.length,
-            businesses
+            timestamp: new Date().toISOString(),
+            data: businesses
         });
 
     } catch (error) {
@@ -116,18 +138,27 @@ app.get('/api/yelp', [
         
         let status = 500;
         let message = 'An error occurred while processing your request';
+        let errorCode = 'SERVER_ERROR';
 
         if (error.response) {
             status = error.response.status;
             message = error.response.data.error?.description || 'Yelp API error';
+            errorCode = 'YELP_API_ERROR';
         } else if (error.request) {
             status = 504;
             message = 'Request to Yelp API timed out';
+            errorCode = 'REQUEST_TIMEOUT';
+        } else if (error.code === 'ECONNABORTED') {
+            status = 504;
+            message = 'Connection to Yelp API timed out';
+            errorCode = 'CONNECTION_TIMEOUT';
         }
 
         res.status(status).json({ 
             success: false,
-            error: message
+            error: message,
+            code: errorCode,
+            timestamp: new Date().toISOString()
         });
     }
 });
@@ -143,19 +174,28 @@ function calculatePresenceScore(business) {
 
 // 404 Handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Not found' });
+    res.status(404).json({ 
+        success: false,
+        error: 'Endpoint not found',
+        code: 'NOT_FOUND'
+    });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server Error:', err.stack);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+        success: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+    });
 });
 
 // Start server
 const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Rate limit: ${apiLimiter.max} requests per 15 minutes`);
 });
 
 // Handle unhandled promise rejections
@@ -164,10 +204,13 @@ process.on('unhandledRejection', (err) => {
     server.close(() => process.exit(1));
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received. Shutting down gracefully');
-    server.close(() => {
-        console.log('Process terminated');
+// Graceful shutdown handlers
+['SIGTERM', 'SIGINT'].forEach(signal => {
+    process.on(signal, () => {
+        console.log(`${signal} received. Shutting down gracefully...`);
+        server.close(() => {
+            console.log('Server terminated');
+            process.exit(0);
+        });
     });
 });

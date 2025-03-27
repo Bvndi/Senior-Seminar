@@ -1,8 +1,3 @@
-// Yelp API Configuration
-const apikey = process.env.YELP_API_KEY; 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
-// DOM Elements
 const searchBtn = document.getElementById('search-btn');
 const businessTypeInput = document.getElementById('business-type');
 const locationInput = document.getElementById('location');
@@ -54,13 +49,14 @@ async function searchBusinesses() {
     clearResults();
 
     try {
+        // Make a request to your server's proxy endpoint
         const response = await fetch(`http://localhost:3000/api/yelp?term=${encodeURIComponent(term)}&location=${encodeURIComponent(location)}`);
         const data = await response.json();
 
         if (data.error) {
             showError(data.error);
         } else {
-            displayResults(data.businesses || []);
+            displayResults(data.data || []); // Adjusted to match the server's response structure
         }
     } catch (error) {
         console.error('API Error:', error);
