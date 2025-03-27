@@ -77,14 +77,13 @@ app.get('/api/yelp', apiLimiter, [
     query('location')
         .trim()
         .notEmpty().withMessage('Location is required')
-        .isLength({ max: 100 }).withMessage('Location must be less than 100 characters')
-], async (req, res) => {
+    ], async (req, res) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ 
             success: false,
-            errors: errors.array() 
+            errors: errors.array()[0].msg 
         });
     }
 
