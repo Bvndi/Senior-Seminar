@@ -36,9 +36,7 @@ app.disable('x-powered-by');
 
 // CORS Configuration
 const corsOptions = {
-    origin: isProduction 
-        ? ['https://your-production-domain.com'] 
-        : ['http://localhost:3000'],
+    origin:['http://localhost:3000'],
     methods: ['GET'],
     allowedHeaders: ['Content-Type'],
     credentials: true
