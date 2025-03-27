@@ -27,6 +27,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Route for root to test server
+app.get('/', (req, res) => {
+    res.send('Server is running');
+});
+
 // Yelp API Proxy Route
 app.get('/api/yelp', async (req, res) => {
     const { term, location } = req.query;
