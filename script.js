@@ -1,6 +1,6 @@
 // Yelp API Configuration
 const YELP_API_KEY = 'toY0q6whX7_wBO9zdfdkymlgnWCHolOjsUjVtmRnAFcJhwDUC5IMuwwfxFsL8f_onGwrrcg7BMjrZUTLUClp_HmZhGTkKaX-fnezPnMy1OHnKpAhAVUAScIRHYvhZ3Yx';
-const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 // DOM Elements
 const searchBtn = document.getElementById('search-btn');
@@ -44,16 +44,8 @@ async function searchBusinesses() {
     const term = businessTypeInput.value.trim();
     const location = locationInput.value.trim();
 
-    console.log("Searching for:", { term, location }); // Debug log
-
     if (!term || !location) {
         showError('Please enter both a business type and location');
-        return;
-    }
-
-    // Validate location format
-    if (!/^[a-zA-Z\s]+$/.test(location) && !/^\d+$/.test(location)) {
-        showError('Please use either a city name or ZIP code');
         return;
     }
 
@@ -61,35 +53,22 @@ async function searchBusinesses() {
     clearResults();
 
     try {
-        // Test with hardcoded values first
-        const testTerm = "bakery";
-        const testLocation = "san francisco";
-        
-        const response = await fetch(
-            `${CORS_PROXY}https://api.yelp.com/v3/businesses/search?term=${encodeURIComponent(testTerm)}&location=${encodeURIComponent(testLocation)}`, 
-            {
-                headers: {
-                    'Authorization': `Bearer ${YELP_API_KEY}`,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            }
-        );
-
+        const response = await fetch(`http://localhost:3000/api/yelp?term=${encodeURIComponent(term)}&location=${encodeURIComponent(location)}`);
         const data = await response.json();
-        console.log("API Response:", data); // Debug log
-        
+
         if (data.error) {
-            showError(data.error.description);
+            showError(data.error);
         } else {
             displayResults(data.businesses || []);
         }
     } catch (error) {
         console.error('API Error:', error);
-        showError('Failed to connect to Yelp. Please try again later.');
+        showError('Failed to connect. Please try again later.');
     } finally {
         setLoading(false);
     }
 }
+
 
 function displayResults(businesses) {
     clearResults();
