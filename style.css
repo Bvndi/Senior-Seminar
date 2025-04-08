@@ -14,7 +14,7 @@
 }
 
 body {
-    background: url('./images/background.jpg') no-repeat center center fixed;
+    background: url('./background/01.jpg') no-repeat center center fixed;
     background-size: cover;
     color: white;
     min-height: 100vh;
