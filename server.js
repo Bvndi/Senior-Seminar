@@ -36,12 +36,12 @@ app.disable('x-powered-by');
 
 // CORS Configuration
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:5173'],
+    origin: ['http://localhost:5173'], // Add your production domain when needed
     methods: ['GET'],
     allowedHeaders: ['Content-Type'],
     credentials: true
-};
-app.use(cors(corsOptions));
+  };
+  app.use(cors(corsOptions));
 
 // Request logging
 app.use(morgan(isProduction ? 'combined' : 'dev'));
