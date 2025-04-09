@@ -36,7 +36,7 @@ app.disable('x-powered-by');
 
 // CORS Configuration
 const corsOptions = {
-    origin:['http://localhost:3000'],
+    origin: ['http://localhost:3000', 'http://localhost:5173'],
     methods: ['GET'],
     allowedHeaders: ['Content-Type'],
     credentials: true
