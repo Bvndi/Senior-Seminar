@@ -7,7 +7,7 @@ const helpCountSpan = document.getElementById('help-count');
 const tutorialModal = document.getElementById('tutorial-modal');
 const startBtn = document.getElementById('start-btn');
 
-// Initialize the map
+// Initializing the map
 const map = L.map('map').setView([40.7128, -74.0060], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -49,7 +49,7 @@ async function searchBusinesses() {
     clearResults();
 
     try {
-        // Make a request to your server's proxy endpoint
+        // Make a request to my server's proxy endpoint
         const response = await fetch(`/api/yelp?term=${term}&location=${location}`);
         const data = await response.json();
 
@@ -184,7 +184,7 @@ function showEmptyState() {
     `;
 }
 
-// Add custom marker styles
+//Custom marker styles
 const markerStyle = document.createElement('style');
 markerStyle.textContent = `
     .poor-presence-marker {
