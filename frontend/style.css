@@ -334,7 +334,7 @@ header h1 {
 .modal-content {
     background: white;
     padding: 30px;
-    border-radius: 10px;
+    border-radius: 85px;
     max-width: 500px;
     width: 90%;
     color: var(--dark);
@@ -370,7 +370,7 @@ header h1 {
 }
 
 #start-btn:hover {
-    background: #2980b9;
+    background: #09578b;
 }
 
 /* Animations */

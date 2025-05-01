@@ -23,6 +23,7 @@ if (!localStorage.getItem('tutorialShown')) {
 startBtn.addEventListener('click', function() {
     console.log('Start button clicked');
     tutorialModal.style.display = 'none';
+    window.location.href = '#' + 'main-content';
 });
 
 searchBtn.addEventListener('click', searchBusinesses);
